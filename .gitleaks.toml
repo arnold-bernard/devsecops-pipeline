@@ -1,0 +1,10 @@
+title = "Arnold DevSecOps Rules"
+
+[[rules]]
+id = "arnold-secret"
+
+description = "Detect Arnold secrets"
+
+regex = '''ARNOLD_SECRET_[A-Z0-9]{8}'''
+
+tags = ["secret"]
