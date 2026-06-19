@@ -1,8 +1,9 @@
 resource "aws_instance" "demo" {
+  subnet_id = aws_subnet.demo_public_subnet1.id
   iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
-  security_groups = [aws_security_group.web.name]
-  ami           = "ami-0c55b159cbfafe1f0"
-  instance_type = "t2.micro"
+  vpc_security_group_ids = [aws_security_group.web.id]
+  ami           =  var.ami
+  instance_type = "t2.medium"
   monitoring     = true
   tags = {
     Name = "DemoInstance"
