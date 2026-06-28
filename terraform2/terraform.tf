@@ -22,7 +22,8 @@ variable "key_name" {
 
 resource "aws_key_pair" "deployer" {
   key_name   = var.key_name
-  public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBhLVYWp61sn22sWle6aSy9j3bYWZI4kwsohEL2LVGYp arnold@DESKTOP-T7RVSCP"
+  #public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBhLVYWp61sn22sWle6aSy9j3bYWZI4kwsohEL2LVGYp arnold@DESKTOP-T7RVSCP"
+  public_key = file("~/devsecops-juice-shop/keys.pub")
 }
 
 variable "instance_type" {
@@ -34,13 +35,14 @@ variable "instance_type" {
 # Data sources
 # ----------------------------------------------------------------------
 # Get the latest Amazon Linux 2 AMI
-data "aws_ami" "amazon_linux_2" {
+data "aws_ami" "ubuntu" {
   most_recent = true
-  owners      = ["amazon"]
+
+  owners = ["099720109477"] # Canonical
 
   filter {
     name   = "name"
-    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+    values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"]
   }
 
   filter {
@@ -169,7 +171,7 @@ resource "aws_security_group" "common" {
 
 # 1. Jenkins Server
 resource "aws_instance" "jenkins" {
-  ami                    = data.aws_ami.amazon_linux_2.id
+  ami                    = data.aws_ami.ubuntu.id
   instance_type          = var.instance_type
   subnet_id              = aws_subnet.public.id
   vpc_security_group_ids = [aws_security_group.common.id]
@@ -186,6 +188,7 @@ resource "aws_instance" "jenkins" {
     }
   }
 
+    user_data = file("jenkins-installation.sh")
   metadata_options {
     http_tokens = "required"
   }
@@ -199,7 +202,7 @@ resource "aws_instance" "jenkins" {
 
 # 2. SonarQube Server (using Docker)
 resource "aws_instance" "sonarqube" {
-  ami                    = data.aws_ami.amazon_linux_2.id
+  ami                    = data.aws_ami.ubuntu.id
   instance_type          = var.instance_type
   subnet_id              = aws_subnet.public.id
   vpc_security_group_ids = [aws_security_group.common.id]
@@ -209,12 +212,12 @@ resource "aws_instance" "sonarqube" {
               #!/bin/bash
               set -e
               # Update system
-              yum update -y
+              apt update -y
 
               # Install Docker
-              amazon-linux-extras install docker -y
-              service docker start
-              usermod -a -G docker ec2-user
+              apt install -y docker.io
+              systemctl start docker
+              systemctl enable docker
 
               # Run SonarQube container (LTS version) on port 9000
               docker run -d --name sonarqube -p 9000:9000 sonarqube:lts-community
@@ -229,7 +232,7 @@ resource "aws_instance" "sonarqube" {
 
 # 3. Third Server (generic web server – Nginx)
 resource "aws_instance" "third" {
-  ami                    = data.aws_ami.amazon_linux_2.id
+  ami                    = data.aws_ami.ubuntu.id
   instance_type          = var.instance_type
   subnet_id              = aws_subnet.public.id
   vpc_security_group_ids = [aws_security_group.common.id]
@@ -241,9 +244,9 @@ resource "aws_instance" "third" {
               exec > >(tee -a /var/log/user-data.log) 2>&1
               echo "Starting user-data script..."
 
-              yum update -y
-              curl -fsSL https://rpm.nodesource.com/setup_18.x | bash -
-              yum install -y nodejs git
+              apt update -y
+              curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+              apt install -y nodejs git
 
               cd /home/ec2-user
               git clone https://github.com/arnold-bernard/devsecops-pipeline.git
