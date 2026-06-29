@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ------------------------------------------------------------
-# Jenkins + Docker + Gitleaks + Checkov installer for Ubuntu
+# Jenkins + Docker + Trivy installer for Ubuntu
 # ------------------------------------------------------------
 
 GREEN='\033[0;32m'
@@ -23,8 +23,8 @@ fi
 log_info "Updating package lists..."
 apt update -y
 
-log_info "Installing essential packages (wget, curl, python3, pip)..."
-apt install -y wget curl fontconfig openjdk-21-jre python3 python3-pip
+log_info "Installing essential packages (wget, curl, gnupg, python3, pip, etc.)..."
+apt install -y wget curl gnupg fontconfig openjdk-21-jre python3 python3-pip
 
 # --------------------------------------------------------------------
 # 1. JENKINS
@@ -96,27 +96,30 @@ for user in ubuntu jenkins; do
 done
 
 # --------------------------------------------------------------------
-# 4. GITLEAKS
+# 4. TRIVY (using the exact commands you provided)
 # --------------------------------------------------------------------
-log_info "Installing Gitleaks..."
+log_info "Installing Trivy..."
+# Ensure wget and gnupg are present (already installed, but safe)
+apt install -y wget gnupg
+
+mkdir -p /usr/share/keyrings
+wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | \
+    gpg --dearmor | tee /usr/share/keyrings/trivy.gpg > /dev/null
+
+echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | \
+    tee /etc/apt/sources.list.d/trivy.list
+
 apt update -y
-apt install -y gitleaks
+apt install -y trivy
 
-# --------------------------------------------------------------------
-# 5. CHECKOV (via pip3 system-wide)
-# --------------------------------------------------------------------
-log_info "Installing Checkov system-wide via pip3..."
-pip3 install checkov --break-system-packages
-
-# Verify
-if command -v checkov &>/dev/null; then
-    log_info "Checkov installed successfully: $(checkov --version 2>/dev/null || echo 'version unknown')"
+if command -v trivy &>/dev/null; then
+    log_info "Trivy installed successfully: $(trivy --version | head -n1)"
 else
-    log_warn "Checkov not found in PATH. Try: which checkov"
+    log_warn "Trivy not found in PATH."
 fi
 
 # --------------------------------------------------------------------
-# 6. JENKINS INITIAL ADMIN PASSWORD
+# 5. JENKINS INITIAL ADMIN PASSWORD
 # --------------------------------------------------------------------
 sleep 3
 if [[ -f /var/lib/jenkins/secrets/initialAdminPassword ]]; then

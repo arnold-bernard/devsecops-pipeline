@@ -23,7 +23,7 @@ variable "key_name" {
 resource "aws_key_pair" "deployer" {
   key_name   = var.key_name
   #public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBhLVYWp61sn22sWle6aSy9j3bYWZI4kwsohEL2LVGYp arnold@DESKTOP-T7RVSCP"
-  public_key = file("~/devsecops-juice-shop/keys.pub")
+  public_key = file("${path.module}/../keys.pub")
 }
 
 variable "instance_type" {
@@ -188,8 +188,8 @@ resource "aws_instance" "jenkins" {
     }
   }
 
-    user_data = file("jenkins-installation.sh")
-  metadata_options {
+    user_data = file("${path.module}/../scripts/jenkins-installation.sh")
+    metadata_options {
     http_tokens = "required"
   }
 

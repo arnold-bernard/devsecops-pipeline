@@ -1,4 +1,3 @@
-```gitignore
 node_modules/
 .env
 .env.*
@@ -17,4 +16,5 @@ terraform.tfstate.backup
 *.log
 
 reports/
-```
+keys/
+keys.pub
